@@ -1,0 +1,14 @@
+ADS1256.c:31:6:setDIFFChannel	16	static
+ADS1256.c:45:6:writeCMD	24	static
+ADS1256.c:62:6:setDataRate	16	static
+ADS1256.c:75:6:writeByteToReg	24	static
+ADS1256.c:93:6:writeToReg	24	static
+ADS1256.c:119:6:setPGA	16	static
+ADS1256.c:131:6:send8bit	16	static
+ADS1256.c:143:6:waitDRDY	16	static
+ADS1256.c:161:9:readChipID	16	static
+ADS1256.c:176:9:receive8bit	24	static
+ADS1256.c:202:9:readByteFromReg	24	static
+ADS1256.c:224:6:setBuffer	16	static
+ADS1256.c:236:7:ADS1256_GetChannalValue	16	static
+ADS1256.c:275:5:ADS1256_init	16	static,ignoring_inline_asm
