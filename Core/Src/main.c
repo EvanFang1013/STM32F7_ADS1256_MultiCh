@@ -60,8 +60,8 @@ DMA_HandleTypeDef hdma_spi1_tx;
 UART_HandleTypeDef huart6;
 DMA_HandleTypeDef hdma_usart6_tx;
 
-osThreadId transferTaskHandle;
-osSemaphoreId transferBinarySemHandle;
+osThreadId defaultTaskHandle;
+osSemaphoreId myBinarySem01Handle;
 /* USER CODE BEGIN PV */
 /*
  * I2C private value
@@ -156,7 +156,7 @@ static void MX_DMA_Init(void);
 static void MX_SPI1_Init(void);
 static void MX_USART6_UART_Init(void);
 static void MX_ADC1_Init(void);
-void transferThread(void const * argument);
+void StartDefaultTask(void const * argument);
 
 /* USER CODE BEGIN PFP */
 
@@ -191,7 +191,7 @@ int main(void)
   /* MCU Configuration--------------------------------------------------------*/
 
   /* Reset of all peripherals, Initializes the Flash interface and the Systick. */
-  HAL_Init();
+ HAL_Init();
 
   /* USER CODE BEGIN Init */
 
@@ -213,6 +213,7 @@ int main(void)
   /* USER CODE BEGIN 2 */
    //TODO: Initialize delay systick
   delay_init(216);
+  TM_Delay_Init();
 
   //TODO: ADS1256 init
   numChannel = 2;
@@ -230,9 +231,9 @@ int main(void)
   /* USER CODE END RTOS_MUTEX */
 
   /* Create the semaphores(s) */
-  /* definition and creation of transferBinarySem */
-  osSemaphoreDef(transferBinarySem);
-  transferBinarySemHandle = osSemaphoreCreate(osSemaphore(transferBinarySem), 1);
+  /* definition and creation of myBinarySem01 */
+  osSemaphoreDef(myBinarySem01);
+  myBinarySem01Handle = osSemaphoreCreate(osSemaphore(myBinarySem01), 1);
 
   /* USER CODE BEGIN RTOS_SEMAPHORES */
   /* add semaphores, ... */
@@ -247,9 +248,9 @@ int main(void)
   /* USER CODE END RTOS_QUEUES */
 
   /* Create the thread(s) */
-  /* definition and creation of transferTask */
-  osThreadDef(transferTask, transferThread, osPriorityNormal, 0, 200);
-  transferTaskHandle = osThreadCreate(osThread(transferTask), NULL);
+  /* definition and creation of defaultTask */
+  osThreadDef(defaultTask, StartDefaultTask, osPriorityNormal, 0, 128);
+  defaultTaskHandle = osThreadCreate(osThread(defaultTask), NULL);
 
   /* USER CODE BEGIN RTOS_THREADS */
   /* add threads, ... */
@@ -574,12 +575,12 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
 			arm_max_f32(v_f, 1250, &v.max, &v.index);
 			arm_max_f32(i_f, 1250, &i.max, &i.index);
 			R = v.max / i.max;
-			snprintf(tf_buff, 10 , "%.4f\r\n", R);
-			tf_size = strlen(tf_buff);
-			HAL_UART_Transmit_DMA(&huart6, tf_buff, tf_size);
+			F2B.f = R;
+//			snprintf(tf_buff,8, "%.4f", R);
 //			BaseType_t xHigherPriorityTaskWoken;
 //			xHigherPriorityTaskWoken = pdFALSE;
-//			xSemaphoreGiveFromISR(transferBinarySemHandle,&xHigherPriorityTaskWoken);
+//			xSemaphoreGiveFromISR(myBinarySem01Handle,&xHigherPriorityTaskWoken);
+
 
 		}
 	}
@@ -589,25 +590,26 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
 
 /* USER CODE END 4 */
 
-/* USER CODE BEGIN Header_transferThread */
+/* USER CODE BEGIN Header_StartDefaultTask */
 /**
-  * @brief  Function implementing the transferTask thread.
+  * @brief  Function implementing the defaultTask thread.
   * @param  argument: Not used
   * @retval None
   */
-/* USER CODE END Header_transferThread */
-void transferThread(void const * argument)
+/* USER CODE END Header_StartDefaultTask */
+void StartDefaultTask(void const * argument)
 {
   /* USER CODE BEGIN 5 */
-
-//  osThreadSuspend(NULL);
-
   /* Infinite loop */
   for(;;)
   {
-	  if(xSemaphoreTake(transferBinarySemHandle, portMAX_DELAY) == pdTRUE ) {
+	  if(xSemaphoreTake(myBinarySem01Handle, portMAX_DELAY) == pdTRUE ) {
+		  __NOP();
 
-	 }
+//		tf_size = strlen(F2B.byte);
+//		HAL_UART_Transmit(&huart6, F2B.byte, tf_size,100);
+
+	  }
     osDelay(1);
   }
   /* USER CODE END 5 */

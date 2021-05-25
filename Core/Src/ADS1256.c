@@ -243,17 +243,21 @@ float ADS1256_GetChannalValue(int Channel)
 	CS_0();
 
     setDIFFChannel(posChannels[Channel], negChannels[Channel]);
-    delay_us(5);
+//    delay_us(5);
+    TM_DelayMicros(5);
     HAL_SPI_Transmit_DMA(&hspi1, SYNCcmduffer ,1);
-    delay_us(5);
+//    delay_us(5);
+    TM_DelayMicros(5);
     HAL_SPI_Transmit_DMA(&hspi1, WAKEUPcmduffer ,1);
-    delay_us(50);
+//    delay_us(50);
+    TM_DelayMicros(50);
 
     /**
      * receive data
      */
     HAL_SPI_Transmit_DMA(&hspi1, SDATACcmduffer ,1);
-    delay_us(7);
+//    delay_us(7);
+    TM_DelayMicros(7);
     HAL_SPI_Receive_DMA(&hspi1,Databuffer,3);
 	read  = ((int32_t)Databuffer[0] << 16) & 0x00FF0000;
 	read |= ((int32_t)Databuffer[1] << 8);
@@ -265,7 +269,8 @@ float ADS1256_GetChannalValue(int Channel)
 
 	data = read;
 	data = data / 1670000;
-	delay_us(100);
+//	delay_us(100);
+	TM_DelayMicros(100);
 	CS_1();
 
 	return data;
@@ -279,18 +284,22 @@ int ADS1256_init()
 	  //Reset ADS1256
 	  waitDRDY();
 	  writeCMD(CMD_RESET);
-	  delay_us(100);
+//	  delay_us(100);
+	  TM_DelayMicros(100);
 
 	  //Initialize ADS1256 parameter (Buffer, PGA, Sampling rate)
 	  waitDRDY();
 	  setBuffer();
-	  delay_us(10);
+//	  delay_us(10);
+	  TM_DelayMicros(10);
 	  waitDRDY();
 	  setPGA(PGA_GAIN1);
-	  delay_us(10);
+//	  delay_us(10);
+	  TM_DelayMicros(10);
 	  waitDRDY();
-	  setDataRate(DRATE_7500);
-	  delay_us(10);
+	  setDataRate(DRATE_15000);
+//	  delay_us(10);
+	  TM_DelayMicros(10);
 	  waitDRDY();
 	  writeCMD(CMD_SELFCAL);
 	  waitDRDY();
