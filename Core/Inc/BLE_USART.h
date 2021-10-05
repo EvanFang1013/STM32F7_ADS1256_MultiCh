@@ -33,3 +33,4 @@ typedef struct
 } USART_BLE;
 
 _Bool checkBLECommandFromBLEGateway(char * BLEcommand,char * index, int len);
+

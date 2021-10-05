@@ -250,7 +250,7 @@ float ADS1256_GetChannalValue(int Channel)
     TM_DelayMicros(5);
     HAL_SPI_Transmit_DMA(&hspi1, WAKEUPcmduffer ,1);
 //    delay_us(50);
-    TM_DelayMicros(50);
+    TM_DelayMicros(25);
 
     /**
      * receive data
@@ -270,7 +270,8 @@ float ADS1256_GetChannalValue(int Channel)
 	data = read;
 	data = data / 1670000;
 //	delay_us(100);
-	TM_DelayMicros(100);
+//	TM_DelayMicros(25);
+	TM_DelayMicros(25);
 	CS_1();
 
 	return data;
@@ -297,7 +298,7 @@ int ADS1256_init()
 //	  delay_us(10);
 	  TM_DelayMicros(10);
 	  waitDRDY();
-	  setDataRate(DRATE_15000);
+	  setDataRate(DRATE_7500);
 //	  delay_us(10);
 	  TM_DelayMicros(10);
 	  waitDRDY();
@@ -309,6 +310,8 @@ int ADS1256_init()
 	  } while (id!=3);
 
 	  __enable_irq();
+
+	  return id;
 
 
 }

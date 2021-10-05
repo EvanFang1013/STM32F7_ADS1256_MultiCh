@@ -19,7 +19,6 @@
 /* USER CODE END Header */
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
-#include "cmsis_os.h"
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
@@ -30,6 +29,8 @@
 #include "ADS1256.h"
 #include "BLE_USART.h"
 #include "adc_apps.h"
+#include <stdio.h>
+#include <string.h>
 
 
 /* USER CODE END Includes */
@@ -41,7 +42,6 @@
 
 /* Private define ------------------------------------------------------------*/
 /* USER CODE BEGIN PD */
-
 
 /* USER CODE END PD */
 
@@ -60,8 +60,6 @@ DMA_HandleTypeDef hdma_spi1_tx;
 UART_HandleTypeDef huart6;
 DMA_HandleTypeDef hdma_usart6_tx;
 
-osThreadId defaultTaskHandle;
-osSemaphoreId myBinarySem01Handle;
 /* USER CODE BEGIN PV */
 /*
  * I2C private value
@@ -79,7 +77,7 @@ typedef enum _sensor_channel{
 union FLOAT_BYTE
 {
  float f;
- uint8_t byte[sizeof(float)];
+ unsigned char n[4];
 }F2B;
 
 
@@ -95,11 +93,16 @@ int adc_status=0;
 int numChannel;
 int prechannel = 0;
 float R;
+
 float voltage;
 float current;
+float voltage_tmp;
+float current_tmp;
 float temp;
 int tf_size;
-char tf_buff[10];
+_Bool tf_status = 0;
+unsigned char tf_buff[35];
+
 
 
 float v_f[1250];
@@ -156,8 +159,6 @@ static void MX_DMA_Init(void);
 static void MX_SPI1_Init(void);
 static void MX_USART6_UART_Init(void);
 static void MX_ADC1_Init(void);
-void StartDefaultTask(void const * argument);
-
 /* USER CODE BEGIN PFP */
 
 
@@ -191,7 +192,7 @@ int main(void)
   /* MCU Configuration--------------------------------------------------------*/
 
   /* Reset of all peripherals, Initializes the Flash interface and the Systick. */
- HAL_Init();
+  HAL_Init();
 
   /* USER CODE BEGIN Init */
 
@@ -221,45 +222,10 @@ int main(void)
   v.cnt = 0;
   i.cnt = 0;
 
-
    //TODO: Set continuous mode.
 
   /* USER CODE END 2 */
 
-  /* USER CODE BEGIN RTOS_MUTEX */
-  /* add mutexes, ... */
-  /* USER CODE END RTOS_MUTEX */
-
-  /* Create the semaphores(s) */
-  /* definition and creation of myBinarySem01 */
-  osSemaphoreDef(myBinarySem01);
-  myBinarySem01Handle = osSemaphoreCreate(osSemaphore(myBinarySem01), 1);
-
-  /* USER CODE BEGIN RTOS_SEMAPHORES */
-  /* add semaphores, ... */
-  /* USER CODE END RTOS_SEMAPHORES */
-
-  /* USER CODE BEGIN RTOS_TIMERS */
-  /* start timers, add new ones, ... */
-  /* USER CODE END RTOS_TIMERS */
-
-  /* USER CODE BEGIN RTOS_QUEUES */
-  /* add queues, ... */
-  /* USER CODE END RTOS_QUEUES */
-
-  /* Create the thread(s) */
-  /* definition and creation of defaultTask */
-  osThreadDef(defaultTask, StartDefaultTask, osPriorityNormal, 0, 128);
-  defaultTaskHandle = osThreadCreate(osThread(defaultTask), NULL);
-
-  /* USER CODE BEGIN RTOS_THREADS */
-  /* add threads, ... */
-  /* USER CODE END RTOS_THREADS */
-
-  /* Start scheduler */
-  osKernelStart();
-
-  /* We should never get here as control is now taken by the scheduler */
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
   while (1)
@@ -268,8 +234,18 @@ int main(void)
 
     /* USER CODE BEGIN 3 */
 
-	  ADC1_Conv(&hadc1);
-	  temp = (float)(ADC_1.Vol[0])/4096*3.3;
+	  if (tf_status)
+	  {
+		  tf_status = 0;
+//		  snprintf(tf_buff,35, "%.2f,%.2f,%.2f\n", v.max,i.max,R);
+		  snprintf(tf_buff,35, "%.4f\n", R);
+		  USARTBLE.bufferSize = min_(tf_buff, strlen(tf_buff));
+		  HAL_UART_Transmit_DMA(&huart6, tf_buff, USARTBLE.bufferSize);
+	//	  ADC1_Conv(&hadc1);
+	//	  temp = (float)(ADC_1.Vol[0])/4096*3.3;
+		  HAL_GPIO_TogglePin(GPIOD, GPIO_PIN_12);
+	  }
+
 
   }
   /* USER CODE END 3 */
@@ -474,7 +450,7 @@ static void MX_DMA_Init(void)
   HAL_NVIC_SetPriority(DMA2_Stream3_IRQn, 5, 0);
   HAL_NVIC_EnableIRQ(DMA2_Stream3_IRQn);
   /* DMA2_Stream6_IRQn interrupt configuration */
-  HAL_NVIC_SetPriority(DMA2_Stream6_IRQn, 5, 0);
+  HAL_NVIC_SetPriority(DMA2_Stream6_IRQn, 0, 0);
   HAL_NVIC_EnableIRQ(DMA2_Stream6_IRQn);
 
 }
@@ -546,19 +522,20 @@ static void MX_GPIO_Init(void)
 void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
 {
 
-	if(GPIO_Pin == GPIO_PIN_3 &&id==3)
+	if(GPIO_Pin == GPIO_PIN_3 &&id==3 )
 	{
 		switch(prechannel)
 		{
 		case sensor1:
-			voltage = ADS1256_GetChannalValue(sensor1);
-  			voltage = voltage*60.6;
+			voltage_tmp = ADS1256_GetChannalValue(sensor1);
+  			voltage = voltage_tmp*60.6;
   			v_f[v.cnt]=voltage;
   			v.cnt++;
 			break;
 		case sensor2:
-			current = ADS1256_GetChannalValue(sensor2);
-  			current = (current-2.27)/0.025;
+			current_tmp = ADS1256_GetChannalValue(sensor2);
+  			current = (current_tmp-2.57)/0.025;
+//			current = (current_tmp)/0.025;
   			i_f[i.cnt]=current;
   			i.cnt++;
 			break;
@@ -575,45 +552,29 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
 			arm_max_f32(v_f, 1250, &v.max, &v.index);
 			arm_max_f32(i_f, 1250, &i.max, &i.index);
 			R = v.max / i.max;
-			F2B.f = R;
-//			snprintf(tf_buff,8, "%.4f", R);
+			tf_status = 1;
+
+
+//			F2B.f = R;
+
+
+
 //			BaseType_t xHigherPriorityTaskWoken;
 //			xHigherPriorityTaskWoken = pdFALSE;
 //			xSemaphoreGiveFromISR(myBinarySem01Handle,&xHigherPriorityTaskWoken);
 
 
+
+
 		}
+
+
 	}
 }
 
 
 
 /* USER CODE END 4 */
-
-/* USER CODE BEGIN Header_StartDefaultTask */
-/**
-  * @brief  Function implementing the defaultTask thread.
-  * @param  argument: Not used
-  * @retval None
-  */
-/* USER CODE END Header_StartDefaultTask */
-void StartDefaultTask(void const * argument)
-{
-  /* USER CODE BEGIN 5 */
-  /* Infinite loop */
-  for(;;)
-  {
-	  if(xSemaphoreTake(myBinarySem01Handle, portMAX_DELAY) == pdTRUE ) {
-		  __NOP();
-
-//		tf_size = strlen(F2B.byte);
-//		HAL_UART_Transmit(&huart6, F2B.byte, tf_size,100);
-
-	  }
-    osDelay(1);
-  }
-  /* USER CODE END 5 */
-}
 
 /**
   * @brief  This function is executed in case of error occurrence.
