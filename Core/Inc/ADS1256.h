@@ -149,5 +149,5 @@ void writeToReg(uint8_t registerID, uint8_t value);
 void setDataRate(uint8_t drate);
 void setDIFFChannel(uint8_t positiveCh, uint8_t NegativeCh);
 void writeCMD(uint8_t command);
-float ADS1256_GetChannalValue(int Channel);
-
+void ADS1256_SwitchChannalValue(int Channel);
+float ADS1256_GetChannalValue();
